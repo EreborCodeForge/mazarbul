@@ -133,8 +133,8 @@ final class BulkBuilderTest extends TestCase
         );
 
         self::assertSame(
-            'UPDATE "users" AS t SET "name" = v."v_name" FROM (VALUES (?, ?), (?, ?)) AS v ("v_id", "v_name") '
-            . 'WHERE t."id" = v."v_id"',
+            'UPDATE "users" AS t SET "name" = v."v_name" FROM (VALUES (?::bigint, ?::text), (?::bigint, ?::text)) '
+            . 'AS v ("v_id", "v_name") WHERE t."id" = v."v_id"',
             $built['sql'],
         );
         self::assertSame([1, 'Ada', 2, 'Grace'], $built['params']);

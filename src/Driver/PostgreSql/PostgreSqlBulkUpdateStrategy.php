@@ -9,6 +9,9 @@ use EreborCodeForge\Mazarbul\Contract\Dialect;
 
 /**
  * Builds UPDATE ... FROM (VALUES ...) bulk updates for PostgreSQL.
+ *
+ * PDO parameters are cast explicitly in VALUES so PostgreSQL does not infer
+ * everything as text (which breaks joins like integer = text).
  */
 final class PostgreSqlBulkUpdateStrategy implements BulkUpdateStrategy
 {
@@ -25,11 +28,12 @@ final class PostgreSqlBulkUpdateStrategy implements BulkUpdateStrategy
         $valueRows = [];
 
         foreach ($rows as $row) {
-            $placeholders = ['?'];
+            $placeholders = [];
+            $placeholders[] = $this->typedPlaceholder($row[$keyColumn]);
             $params[] = $row[$keyColumn];
             foreach ($updateColumns as $column) {
-                $placeholders[] = '?';
-                $params[] = $row[$column];
+                $placeholders[] = $this->typedPlaceholder($row[$column] ?? null);
+                $params[] = $row[$column] ?? null;
             }
             $valueRows[] = '(' . implode(', ', $placeholders) . ')';
         }
@@ -62,5 +66,15 @@ final class PostgreSqlBulkUpdateStrategy implements BulkUpdateStrategy
         );
 
         return ['sql' => $sql, 'params' => $params];
+    }
+
+    private function typedPlaceholder(mixed $value): string
+    {
+        return match (true) {
+            is_int($value) => '?::bigint',
+            is_float($value) => '?::float8',
+            is_bool($value) => '?::boolean',
+            default => '?::text',
+        };
     }
 }
