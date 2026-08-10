@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         executionOrder="depends,defects"
+         requireCoverageMetadata="false"
+         beStrictAboutCoverageMetadata="false"
+         beStrictAboutOutputDuringTests="true"
+         failOnRisky="true"
+         failOnWarning="true">
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Contract">
+            <directory>tests/Contract</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+        <testsuite name="Performance">
+            <directory>tests/Performance</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+    <php>
+        <env name="DB_MYSQL_DSN" value="mysql:host=127.0.0.1;port=3306;dbname=mazarbul;charset=utf8mb4"/>
+        <env name="DB_MYSQL_USER" value="mazarbul"/>
+        <env name="DB_MYSQL_PASSWORD" value="mazarbul"/>
+        <env name="DB_PGSQL_DSN" value="pgsql:host=127.0.0.1;port=5432;dbname=mazarbul"/>
+        <env name="DB_PGSQL_USER" value="mazarbul"/>
+        <env name="DB_PGSQL_PASSWORD" value="mazarbul"/>
+    </php>
+    <groups>
+        <exclude>
+            <group>integration</group>
+            <group>performance</group>
+        </exclude>
+    </groups>
+</phpunit>

@@ -1,0 +1,64 @@
+{
+    "name": "ereborcodeforge/mazarbul",
+    "description": "Stream-oriented database access for PHP with lazy reusable connections, pipelines, chunk processing and bulk writes.",
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/EreborCodeForge/mazarbul",
+    "keywords": [
+        "database",
+        "pdo",
+        "streaming",
+        "pipeline",
+        "bulk",
+        "mysql",
+        "postgresql"
+    ],
+    "authors": [
+        {
+            "name": "Erebor Code Forge",
+            "homepage": "https://github.com/EreborCodeForge"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/EreborCodeForge/mazarbul/issues",
+        "source": "https://github.com/EreborCodeForge/mazarbul"
+    },
+    "require": {
+        "php": "^8.5",
+        "ext-pdo": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0",
+        "phpstan/phpstan": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "EreborCodeForge\\Mazarbul\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "EreborCodeForge\\Mazarbul\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit --testsuite=Unit,Contract",
+        "test:all": "phpunit",
+        "test:integration": "phpunit --testsuite=Integration --group=integration",
+        "test:performance": "phpunit --testsuite=Performance --group=performance",
+        "analyse": "phpstan analyse",
+        "check": [
+            "@test",
+            "@analyse"
+        ]
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.0.x-dev"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable"
+}

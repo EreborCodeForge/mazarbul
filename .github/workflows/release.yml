@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Validate and publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo, pdo_mysql, pdo_pgsql
+          coverage: none
+
+      - name: Validate composer.json
+        run: composer validate --strict --no-check-publish
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Quality gate
+        run: composer check
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            Liberação do Livro de Mazarbul `${{ github.ref_name }}`.
+
+            Instale via Composer:
+
+            ```bash
+            composer require ereborcodeforge/mazarbul:${{ github.ref_name }}
+            ```
+
+            Ou, após o Packagist indexar a tag:
+
+            ```bash
+            composer update ereborcodeforge/mazarbul
+            ```
+
+      - name: Notify Packagist
+        env:
+          PACKAGIST_USER: ${{ secrets.PACKAGIST_USERNAME }}
+          PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+        run: |
+          if [ -z "${PACKAGIST_USER}" ] || [ -z "${PACKAGIST_TOKEN}" ]; then
+            echo "Secrets PACKAGIST_USERNAME / PACKAGIST_TOKEN ausentes — notificação Packagist ignorada."
+            echo "Após submeter o pacote em https://packagist.org/packages/submit, configure o GitHub Hook do Packagist"
+            echo "ou adicione os secrets do API token para atualização automática a cada tag."
+            exit 0
+          fi
+          curl -fsS -X POST \
+            -H 'content-type: application/json' \
+            "https://packagist.org/api/update-package?username=${PACKAGIST_USER}&apiToken=${PACKAGIST_TOKEN}" \
+            -d '{"repository":{"url":"https://github.com/EreborCodeForge/mazarbul"}}'

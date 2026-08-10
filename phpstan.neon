@@ -1,0 +1,33 @@
+parameters:
+    level: max
+    paths:
+        - src
+        - tests
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        # PHPUnit callbacks and pipeline lambdas are intentionally narrower than mixed.
+        -
+            identifier: argument.type
+            path: tests/*
+        -
+            identifier: staticMethod.impossibleType
+            path: tests/*
+        -
+            identifier: deadCode.unreachable
+            path: tests/*
+        -
+            identifier: method.void
+            path: tests/*
+        -
+            identifier: cast.string
+            path: tests/*
+        -
+            identifier: staticMethod.alreadyNarrowedType
+            path: tests/*
+        -
+            identifier: cast.int
+            path: tests/*
+        -
+            identifier: offsetAccess.nonOffsetAccessible
+            path: tests/*

@@ -1,0 +1,15 @@
+/.idea/
+/.vscode/
+/.phpunit.cache/
+/vendor/
+/composer.lock
+/.env
+/.phpunit.result.cache
+/phpstan.neon.dist.bak
+*.log
+.php-cs-fixer.cache
+coverage/
+benchmarks/results/
+.env.local
+Thumbs.db
+Desktop.ini
