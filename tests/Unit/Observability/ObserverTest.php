@@ -9,6 +9,7 @@ use EreborCodeForge\Mazarbul\Connection\ConnectionManager;
 use EreborCodeForge\Mazarbul\Connection\LifecyclePolicy;
 use EreborCodeForge\Mazarbul\Observability\CompositeObserver;
 use EreborCodeForge\Mazarbul\Observability\Event\ConnectionOpened;
+use EreborCodeForge\Mazarbul\Observability\Event\ConnectionReused;
 use EreborCodeForge\Mazarbul\Observability\Event\QueryExecuted;
 use EreborCodeForge\Mazarbul\Observability\NullObserver;
 use EreborCodeForge\Mazarbul\Tests\Support\CountingConnectionFactory;
@@ -28,10 +29,18 @@ final class ObserverTest extends TestCase
     {
         $observer = new NullObserver();
 
+        self::assertTrue($observer->isNoop());
         $observer->notify(new ConnectionOpened('default', 'mysql', 1));
         $observer->notify(new QueryExecuted('default', 'mysql', 'execute', 0.01, 1));
 
         $this->addToAssertionCount(1);
+    }
+
+    public function testCompositeObserverIsNoopOnlyWhenAllChildrenAre(): void
+    {
+        self::assertTrue((new CompositeObserver([new NullObserver(), new NullObserver()]))->isNoop());
+        self::assertFalse((new CompositeObserver([new NullObserver(), new SpyObserver()]))->isNoop());
+        self::assertFalse((new SpyObserver())->isNoop());
     }
 
     public function testCompositeObserverForwardsToAllObservers(): void
@@ -47,6 +56,56 @@ final class ObserverTest extends TestCase
         self::assertSame([$event], $second->events);
         self::assertSame(1, $first->countOf(ConnectionOpened::class));
         self::assertSame(1, $second->countOf(ConnectionOpened::class));
+    }
+
+    public function testNullObserverDoesNotReceiveReuseEventsOnHotPath(): void
+    {
+        $factory = new CountingConnectionFactory();
+        $manager = new ConnectionManager(
+            factory: $factory,
+            observer: new NullObserver(),
+            clock: new FakeClock(),
+        );
+        $manager->define('default', new ConnectionConfig(
+            dsn: 'mysql:host=localhost;dbname=test',
+            lifecycle: new LifecyclePolicy(
+                idleTimeoutSeconds: null,
+                maxLifetimeSeconds: null,
+                healthCheckIntervalSeconds: null,
+            ),
+        ));
+
+        $connection = $manager->connection('default');
+        $connection->pdo();
+        $connection->pdo();
+
+        self::assertSame(1, $factory->createCount);
+    }
+
+    public function testSpyObserverStillReceivesConnectionReused(): void
+    {
+        $spy = new SpyObserver();
+        $factory = new CountingConnectionFactory();
+        $manager = new ConnectionManager(
+            factory: $factory,
+            observer: $spy,
+            clock: new FakeClock(),
+        );
+        $manager->define('default', new ConnectionConfig(
+            dsn: 'mysql:host=localhost;dbname=test',
+            lifecycle: new LifecyclePolicy(
+                idleTimeoutSeconds: null,
+                maxLifetimeSeconds: null,
+                healthCheckIntervalSeconds: null,
+            ),
+        ));
+
+        $connection = $manager->connection('default');
+        $connection->pdo();
+        $connection->pdo();
+
+        self::assertSame(1, $spy->countOf(ConnectionOpened::class));
+        self::assertSame(1, $spy->countOf(ConnectionReused::class));
     }
 
     public function testSpyObserverCollectsConnectionOpenedOnFirstIo(): void

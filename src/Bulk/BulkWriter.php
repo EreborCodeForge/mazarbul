@@ -181,11 +181,13 @@ final class BulkWriter
         callable $executeChunk,
     ): int {
         $started = $this->clock->now();
-        $this->observer->notify(new BulkStarted(
-            connectionName: $this->connection->name(),
-            operation: $operation,
-            table: $table,
-        ));
+        if (!$this->observer->isNoop()) {
+            $this->observer->notify(new BulkStarted(
+                connectionName: $this->connection->name(),
+                operation: $operation,
+                table: $table,
+            ));
+        }
 
         $affected = 0;
         $chunkIndex = 0;
@@ -236,13 +238,15 @@ final class BulkWriter
             throw BulkException::operationFailed($operation, $e);
         }
 
-        $this->observer->notify(new BulkFinished(
-            connectionName: $this->connection->name(),
-            operation: $operation,
-            table: $table,
-            affectedRows: $affected,
-            durationSeconds: $this->clock->now() - $started,
-        ));
+        if (!$this->observer->isNoop()) {
+            $this->observer->notify(new BulkFinished(
+                connectionName: $this->connection->name(),
+                operation: $operation,
+                table: $table,
+                affectedRows: $affected,
+                durationSeconds: $this->clock->now() - $started,
+            ));
+        }
 
         return $affected;
     }
@@ -274,12 +278,14 @@ final class BulkWriter
                     $this->connection->commit();
                 }
 
-                $this->observer->notify(new ChunkProcessed(
-                    connectionName: $this->connection->name(),
-                    operation: $operation,
-                    chunkIndex: $chunkIndex,
-                    rowCount: count($chunk),
-                ));
+                if (!$this->observer->isNoop()) {
+                    $this->observer->notify(new ChunkProcessed(
+                        connectionName: $this->connection->name(),
+                        operation: $operation,
+                        chunkIndex: $chunkIndex,
+                        rowCount: count($chunk),
+                    ));
+                }
 
                 return $count;
             } catch (Throwable $e) {
@@ -305,14 +311,16 @@ final class BulkWriter
                 }
 
                 $delay = $policy->backoff->delaySeconds($attempt);
-                $this->observer->notify(new RetryAttempted(
-                    connectionName: $this->connection->name(),
-                    operation: $operation,
-                    attempt: $attempt,
-                    maxAttempts: $policy->maxAttempts,
-                    delaySeconds: $delay,
-                    errorClass: $e::class,
-                ));
+                if (!$this->observer->isNoop()) {
+                    $this->observer->notify(new RetryAttempted(
+                        connectionName: $this->connection->name(),
+                        operation: $operation,
+                        attempt: $attempt,
+                        maxAttempts: $policy->maxAttempts,
+                        delaySeconds: $delay,
+                        errorClass: $e::class,
+                    ));
+                }
                 $this->sleeper->sleep($delay);
                 ++$attempt;
             }

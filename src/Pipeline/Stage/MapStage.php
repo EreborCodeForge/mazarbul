@@ -17,6 +17,14 @@ final class MapStage implements PipelineStage
     ) {
     }
 
+    /**
+     * @return Closure(mixed): mixed
+     */
+    public function mapper(): Closure
+    {
+        return $this->mapper;
+    }
+
     public function apply(iterable $input): iterable
     {
         foreach ($input as $item) {

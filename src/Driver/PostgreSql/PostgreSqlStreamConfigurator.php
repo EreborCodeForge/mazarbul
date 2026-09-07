@@ -8,16 +8,15 @@ use EreborCodeForge\Mazarbul\Driver\Support\StreamConfigurator;
 use PDO;
 
 /**
- * PostgreSQL PDO fetch is typically client-buffered unless DECLARE CURSOR is used.
- * v1 documents this limitation and relies on incremental fetch without claiming
- * unbuffered reads. Server-side cursors can be introduced later behind this API.
+ * PostgreSQL streaming uses DECLARE CURSOR / FETCH in DatabaseResultStream
+ * when DriverCapabilities::supportsServerSideCursor is true.
+ * Attribute configuration is not required for that path.
  */
 final class PostgreSqlStreamConfigurator implements StreamConfigurator
 {
     public function configure(PDO $pdo): void
     {
-        // Intentionally no-op in v1: standard PDO pgsql buffers the result set.
-        // Callers still benefit from Generator-based consumption for application memory.
+        // Cursor lifecycle is owned by PostgreSqlCursorReader.
     }
 
     public function restore(PDO $pdo): void

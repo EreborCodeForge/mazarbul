@@ -104,6 +104,26 @@ final class PipelineTest extends TestCase
         self::assertSame(3, $yielded);
     }
 
+    public function testTakeBeforeFilterLimitsSourceThenFilters(): void
+    {
+        $result = Pipeline::from([1, 2, 3, 4, 5])
+            ->take(3)
+            ->filter(static fn(int $n): bool => $n % 2 === 0)
+            ->collect();
+
+        self::assertSame([2], $result);
+    }
+
+    public function testFilterBeforeTakeLimitsFilteredOutput(): void
+    {
+        $result = Pipeline::from([1, 2, 3, 4, 5])
+            ->filter(static fn(int $n): bool => $n % 2 === 0)
+            ->take(1)
+            ->collect();
+
+        self::assertSame([2], $result);
+    }
+
     public function testChunkEmitsCompleteAndPartialChunks(): void
     {
         $result = Pipeline::from([1, 2, 3, 4, 5])->chunk(2)->collect();

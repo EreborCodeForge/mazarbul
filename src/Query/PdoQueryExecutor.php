@@ -18,6 +18,13 @@ use Throwable;
 
 final class PdoQueryExecutor implements QueryExecutor
 {
+    private const STATEMENT_CACHE_LIMIT = 32;
+
+    /** @var array<string, PDOStatement> */
+    private array $statementCache = [];
+
+    private int $cacheGeneration = -1;
+
     public function __construct(
         private readonly ManagedConnection $connection,
         private readonly Observer $observer,
@@ -89,7 +96,7 @@ final class PdoQueryExecutor implements QueryExecutor
             return null;
         }
 
-        return array_first(array_values($row));
+        return array_first($row);
     }
 
     public function query(string $sql, array $params = []): QueryResult
@@ -112,7 +119,20 @@ final class PdoQueryExecutor implements QueryExecutor
     public function prepareAndExecute(string $sql, array $params = []): PDOStatement
     {
         $pdo = $this->connection->pdo();
-        $statement = $pdo->prepare($sql);
+        $generation = $this->connection->generation();
+        if ($generation !== $this->cacheGeneration) {
+            $this->statementCache = [];
+            $this->cacheGeneration = $generation;
+        }
+
+        $statement = $this->statementCache[$sql] ?? null;
+        if ($statement === null) {
+            $statement = $pdo->prepare($sql);
+            if (count($this->statementCache) < self::STATEMENT_CACHE_LIMIT) {
+                $this->statementCache[$sql] = $statement;
+            }
+        }
+
         $statement->execute($params);
 
         return $statement;
@@ -120,6 +140,10 @@ final class PdoQueryExecutor implements QueryExecutor
 
     private function notifySuccess(string $operation, float $started, ?int $rowCount): void
     {
+        if ($this->observer->isNoop()) {
+            return;
+        }
+
         $this->observer->notify(new QueryExecuted(
             connectionName: $this->connection->name(),
             driver: $this->connection->driver(),
@@ -131,6 +155,10 @@ final class PdoQueryExecutor implements QueryExecutor
 
     private function notifyFailure(string $operation, Throwable $e): void
     {
+        if ($this->observer->isNoop()) {
+            return;
+        }
+
         $this->observer->notify(new QueryFailed(
             connectionName: $this->connection->name(),
             driver: $this->connection->driver(),

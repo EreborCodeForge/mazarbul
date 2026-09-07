@@ -80,7 +80,7 @@ If credentials were ever exposed in repository history, rotate them immediately.
 
 ## Documentation
 
-See [`docs/`](docs/) for architecture, connections, streaming, pipelines, bulk operations, transactions, and benchmarks.
+See [`docs/`](docs/) for architecture, connections, streaming, pipelines, bulk operations, transactions, benchmarks, and [performance analysis](docs/PERFORMANCE_ANALYSIS.md).
 
 ## Releases & Packagist
 

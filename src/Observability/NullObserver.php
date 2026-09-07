@@ -12,4 +12,9 @@ final class NullObserver implements Observer
     {
         // intentionally empty
     }
+
+    public function isNoop(): bool
+    {
+        return true;
+    }
 }
