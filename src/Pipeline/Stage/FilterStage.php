@@ -17,6 +17,14 @@ final class FilterStage implements PipelineStage
     ) {
     }
 
+    /**
+     * @return Closure(mixed): bool
+     */
+    public function predicate(): Closure
+    {
+        return $this->predicate;
+    }
+
     public function apply(iterable $input): iterable
     {
         foreach ($input as $item) {

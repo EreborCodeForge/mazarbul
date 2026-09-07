@@ -7,6 +7,7 @@ namespace EreborCodeForge\Mazarbul\Stream;
 use EreborCodeForge\Mazarbul\Connection\ManagedConnection;
 use EreborCodeForge\Mazarbul\Contract\Observer;
 use EreborCodeForge\Mazarbul\Contract\ResultStream;
+use EreborCodeForge\Mazarbul\Driver\PostgreSql\PostgreSqlCursorReader;
 use EreborCodeForge\Mazarbul\Exception\QueryException;
 use EreborCodeForge\Mazarbul\Exception\StreamConsumedException;
 use EreborCodeForge\Mazarbul\Observability\Event\StreamFinished;
@@ -14,7 +15,6 @@ use EreborCodeForge\Mazarbul\Observability\Event\StreamStarted;
 use EreborCodeForge\Mazarbul\Pipeline\Pipeline;
 use EreborCodeForge\Mazarbul\Support\Clock;
 use EreborCodeForge\Mazarbul\Support\SystemClock;
-use Generator;
 use PDO;
 use PDOStatement;
 use Throwable;
@@ -65,16 +65,28 @@ final class DatabaseResultStream implements ResultStream
 
         $this->state = StreamState::Open;
         $this->connection->registerStreamOpen();
-        $this->observer->notify(new StreamStarted(
-            connectionName: $this->connection->name(),
-            driver: $this->connection->driver(),
-        ));
+        if (!$this->observer->isNoop()) {
+            $this->observer->notify(new StreamStarted(
+                connectionName: $this->connection->name(),
+                driver: $this->connection->driver(),
+            ));
+        }
 
         $started = $this->clock->now();
         $rows = 0;
 
         try {
             $driver = $this->connection->driverObject();
+            if ($driver->capabilities->supportsServerSideCursor) {
+                $reader = new PostgreSqlCursorReader($this->connection, $this->sql, $this->params);
+                foreach ($reader->rows() as $row) {
+                    ++$rows;
+                    yield $row;
+                }
+
+                return;
+            }
+
             $pdo = $this->connection->pdo();
             $driver->configureStreaming($pdo);
             $this->streamingConfigured = true;
@@ -94,16 +106,23 @@ final class DatabaseResultStream implements ResultStream
                 ++$rows;
                 yield $row;
             }
+        } catch (Throwable $e) {
+            if ($e instanceof QueryException) {
+                throw $e;
+            }
+            throw QueryException::executionFailed($this->sql, $e);
         } finally {
             $this->cleanup();
             $this->state = StreamState::Consumed;
             $this->connection->registerStreamClose();
-            $this->observer->notify(new StreamFinished(
-                connectionName: $this->connection->name(),
-                driver: $this->connection->driver(),
-                rowsStreamed: $rows,
-                durationSeconds: $this->clock->now() - $started,
-            ));
+            if (!$this->observer->isNoop()) {
+                $this->observer->notify(new StreamFinished(
+                    connectionName: $this->connection->name(),
+                    driver: $this->connection->driver(),
+                    rowsStreamed: $rows,
+                    durationSeconds: $this->clock->now() - $started,
+                ));
+            }
         }
     }
 

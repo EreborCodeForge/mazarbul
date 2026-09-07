@@ -16,6 +16,11 @@ final class SpyObserver implements Observer
         $this->events[] = $event;
     }
 
+    public function isNoop(): bool
+    {
+        return false;
+    }
+
     /**
      * @param class-string $class
      *

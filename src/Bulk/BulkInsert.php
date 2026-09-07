@@ -17,29 +17,32 @@ final class BulkInsert
     public function build(Dialect $dialect, string $table, array $columns, array $rows): array
     {
         $quotedTable = $dialect->quoteIdentifier($table);
-        $quotedColumns = array_map(
-            static fn(string $column): string => $dialect->quoteIdentifier($column),
-            $columns,
-        );
+        $quotedColumns = [];
+        foreach ($columns as $column) {
+            $quotedColumns[] = $dialect->quoteIdentifier($column);
+        }
 
-        $rowPlaceholders = [];
+        $columnCount = count($columns);
+        $rowTemplate = '(' . implode(', ', array_fill(0, $columnCount, '?')) . ')';
+        $rowCount = count($rows);
+        $valueSql = $rowCount === 0
+            ? ''
+            : implode(', ', array_fill(0, $rowCount, $rowTemplate));
+
         $params = [];
         foreach ($rows as $row) {
-            $placeholders = [];
             foreach ($columns as $index => $column) {
-                $placeholders[] = '?';
                 $params[] = is_array($row)
                     ? ($row[$column] ?? $row[$index] ?? null)
                     : null;
             }
-            $rowPlaceholders[] = '(' . implode(', ', $placeholders) . ')';
         }
 
         $sql = sprintf(
             'INSERT INTO %s (%s) VALUES %s',
             $quotedTable,
             implode(', ', $quotedColumns),
-            implode(', ', $rowPlaceholders),
+            $valueSql,
         );
 
         return ['sql' => $sql, 'params' => $params];

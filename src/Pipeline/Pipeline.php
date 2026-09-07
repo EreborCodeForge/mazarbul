@@ -17,6 +17,7 @@ use EreborCodeForge\Mazarbul\Pipeline\Stage\MapStage;
 use EreborCodeForge\Mazarbul\Pipeline\Stage\TakeStage;
 use EreborCodeForge\Mazarbul\Pipeline\Stage\TapStage;
 use EreborCodeForge\Mazarbul\Query\Database;
+use Generator;
 
 /**
  * Lazy pull-based pipeline. Stages do not consume until a terminal sink runs.
@@ -185,11 +186,131 @@ final class Pipeline
      */
     private function iterate(): iterable
     {
+        if ($this->canFuse()) {
+            return $this->fusedIterate();
+        }
+
         $iterable = $this->source;
         foreach ($this->stages as $stage) {
             $iterable = $stage->apply($iterable);
         }
 
         return $iterable;
+    }
+
+    private function canFuse(): bool
+    {
+        if ($this->stages === []) {
+            return false;
+        }
+
+        foreach ($this->stages as $stage) {
+            if (
+                !$stage instanceof MapStage
+                && !$stage instanceof FilterStage
+                && !$stage instanceof TapStage
+                && !$stage instanceof TakeStage
+            ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Single-pass path for map/filter/tap/take — preserves stage order (including take).
+     *
+     * @return Generator<int, mixed>
+     */
+    private function fusedIterate(): Generator
+    {
+        yield from $this->fuseFrom($this->source, 0);
+    }
+
+    /**
+     * @param iterable<mixed> $input
+     *
+     * @return Generator<int, mixed>
+     */
+    private function fuseFrom(iterable $input, int $start): Generator
+    {
+        $stages = $this->stages;
+        $n = count($stages);
+        if ($start >= $n) {
+            foreach ($input as $item) {
+                yield $item;
+            }
+
+            return;
+        }
+
+        $takeAt = null;
+        for ($i = $start; $i < $n; ++$i) {
+            if ($stages[$i] instanceof TakeStage) {
+                $takeAt = $i;
+                break;
+            }
+        }
+
+        if ($takeAt === null) {
+            foreach ($input as $item) {
+                $current = $item;
+                $drop = false;
+                for ($i = $start; $i < $n; ++$i) {
+                    $stage = $stages[$i];
+                    if ($stage instanceof FilterStage) {
+                        if (!($stage->predicate())($current)) {
+                            $drop = true;
+                            break;
+                        }
+                    } elseif ($stage instanceof TapStage) {
+                        ($stage->callback())($current);
+                    } elseif ($stage instanceof MapStage) {
+                        $current = ($stage->mapper())($current);
+                    }
+                }
+                if (!$drop) {
+                    yield $current;
+                }
+            }
+
+            return;
+        }
+
+        /** @var TakeStage $takeStage */
+        $takeStage = $stages[$takeAt];
+        $limit = $takeStage->limit();
+        if ($limit === 0) {
+            return;
+        }
+
+        $taken = 0;
+        foreach ($input as $item) {
+            $current = $item;
+            $drop = false;
+            for ($i = $start; $i < $takeAt; ++$i) {
+                $stage = $stages[$i];
+                if ($stage instanceof FilterStage) {
+                    if (!($stage->predicate())($current)) {
+                        $drop = true;
+                        break;
+                    }
+                } elseif ($stage instanceof TapStage) {
+                    ($stage->callback())($current);
+                } elseif ($stage instanceof MapStage) {
+                    $current = ($stage->mapper())($current);
+                }
+            }
+            if ($drop) {
+                continue;
+            }
+
+            yield from $this->fuseFrom([$current], $takeAt + 1);
+            ++$taken;
+            if ($taken >= $limit) {
+                return;
+            }
+        }
     }
 }

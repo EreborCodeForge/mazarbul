@@ -24,3 +24,5 @@ $count = $db->bulk()->insert(
 Effective chunk size is capped by `floor(maxBindParameters / paramsPerRow)`.
 
 Updates use driver strategies (MySQL `CASE/WHEN`, PostgreSQL `UPDATE ... FROM (VALUES ...)`).
+
+When feeding bulk from a pipeline, prefer `toBatchInsert(..., chunkSize: n)` / `toBatchUpdate(..., chunkSize: n)` instead of `->chunk(n)->toBatchInsert(...)`, which can double-buffer.

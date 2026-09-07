@@ -114,7 +114,7 @@ final class ManagedConnection implements Connection
             $this->maybeRotateOrHealthCheck();
             if ($this->pdo !== null) {
                 $this->touch();
-                $this->observer->notify(new ConnectionReused(
+                $this->emit(new ConnectionReused(
                     connectionName: $this->name(),
                     driver: $this->driver(),
                     generation: $this->generation,
@@ -140,13 +140,13 @@ final class ManagedConnection implements Connection
         $this->inTransaction = false;
 
         if ($reconnect) {
-            $this->observer->notify(new ConnectionReconnected(
+            $this->emit(new ConnectionReconnected(
                 connectionName: $this->name(),
                 driver: $this->driver(),
                 generation: $this->generation,
             ));
         } else {
-            $this->observer->notify(new ConnectionOpened(
+            $this->emit(new ConnectionOpened(
                 connectionName: $this->name(),
                 driver: $this->driver(),
                 generation: $this->generation,
@@ -179,7 +179,7 @@ final class ManagedConnection implements Connection
         $this->lastHealthCheckAt = null;
         $this->activeStreams = 0;
 
-        $this->observer->notify(new ConnectionClosed(
+        $this->emit(new ConnectionClosed(
             connectionName: $this->name(),
             driver: $this->driver(),
             generation: $generation,
@@ -201,7 +201,7 @@ final class ManagedConnection implements Connection
         }
 
         $this->inTransaction = true;
-        $this->observer->notify(new TransactionStarted($this->name()));
+        $this->emit(new TransactionStarted($this->name()));
     }
 
     public function commit(): void
@@ -214,7 +214,7 @@ final class ManagedConnection implements Connection
         }
 
         $this->inTransaction = false;
-        $this->observer->notify(new TransactionCommitted($this->name()));
+        $this->emit(new TransactionCommitted($this->name()));
     }
 
     public function rollBack(): void
@@ -229,7 +229,7 @@ final class ManagedConnection implements Connection
         }
 
         $this->inTransaction = false;
-        $this->observer->notify(new TransactionRolledBack($this->name(), 'explicit'));
+        $this->emit(new TransactionRolledBack($this->name(), 'explicit'));
     }
 
     public function lastInsertId(?string $name = null): string|false
@@ -273,7 +273,7 @@ final class ManagedConnection implements Connection
                 // best effort cleanup
             }
             $this->inTransaction = false;
-            $this->observer->notify(new TransactionRolledBack($this->name(), 'request_end'));
+            $this->emit(new TransactionRolledBack($this->name(), 'request_end'));
         }
 
         $this->activeStreams = 0;
@@ -344,5 +344,14 @@ final class ManagedConnection implements Connection
     private function touch(): void
     {
         $this->lastUsedAt = $this->clock->now();
+    }
+
+    private function emit(object $event): void
+    {
+        if ($this->observer->isNoop()) {
+            return;
+        }
+
+        $this->observer->notify($event);
     }
 }

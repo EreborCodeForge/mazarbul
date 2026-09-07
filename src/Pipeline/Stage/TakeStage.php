@@ -17,6 +17,11 @@ final class TakeStage implements PipelineStage
         }
     }
 
+    public function limit(): int
+    {
+        return $this->limit;
+    }
+
     public function apply(iterable $input): iterable
     {
         if ($this->limit === 0) {

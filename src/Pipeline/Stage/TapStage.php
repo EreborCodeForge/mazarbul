@@ -17,6 +17,14 @@ final class TapStage implements PipelineStage
     ) {
     }
 
+    /**
+     * @return Closure(mixed): void
+     */
+    public function callback(): Closure
+    {
+        return $this->callback;
+    }
+
     public function apply(iterable $input): iterable
     {
         foreach ($input as $item) {
