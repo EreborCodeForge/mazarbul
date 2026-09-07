@@ -78,21 +78,6 @@ Copy [`.env.example`](.env.example) to `.env` for local credentials. Never commi
 
 If credentials were ever exposed in repository history, rotate them immediately.
 
-## Documentation
-
-See [`docs/`](docs/) for architecture, connections, streaming, pipelines, bulk operations, transactions, benchmarks, and [performance analysis](docs/PERFORMANCE_ANALYSIS.md).
-
-## Releases & Packagist
-
-Versions follow git tags (`v1.0.0`, `v1.1.0`, …). Pushing a tag runs CI, creates a GitHub Release, and can notify Packagist.
-
-**One-time Packagist setup**
-
-1. Submit the repository at [packagist.org/packages/submit](https://packagist.org/packages/submit) with  
-   `https://github.com/EreborCodeForge/mazarbul`
-2. In Packagist → package settings, enable the **GitHub Hook** (recommended), **or**
-3. Add repository secrets `PACKAGIST_USERNAME` and `PACKAGIST_TOKEN` so `.github/workflows/release.yml` calls the Packagist update API on each tag
-
 After that, consumers get new versions with:
 
 ```bash
